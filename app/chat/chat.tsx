@@ -1,7 +1,9 @@
-import { useState, type FormEvent } from "react";
-import { createOllamaClient } from "~/api/ollama";
+import { useMemo, useRef, useState, type FormEvent } from "react";
+import { createOllamaClient, Model, MODEL_OPTIONS } from "~/api/ollama";
 import { ChatBubble } from "~/components/chat-bubble/chat-bubble";
 import { getCurrentTimeFormatted } from "~/util/date";
+
+import "./chat.css";
 
 type Conversation = {
   isAgent: boolean;
@@ -9,12 +11,23 @@ type Conversation = {
   time: string;
 }[];
 
-const ollamaClient = createOllamaClient();
+const INITIAL_CONTEXT = [
+  "Your name is Alice",
+  "act extremely kind in your responses",
+  "include a very bad joke in every response",
+  "Antwoord alleen in het Nederlands",
+];
+
+const ollamaClient = createOllamaClient(INITIAL_CONTEXT);
 
 export function Chat() {
   const [prompt, setPrompt] = useState("");
   const [isLoading, setIsLoading] = useState(false);
   const [conversation, setConversation] = useState<Conversation>([]);
+  const [model, setModel] = useState<Model>(ollamaClient.getModel());
+
+  const chatsRef = useRef<HTMLTableSectionElement>(null);
+  const inputRef = useRef<HTMLInputElement>(null);
 
   const addToConversation = (message: string, isAgent: boolean) => {
     setConversation((current) => [
@@ -27,12 +40,18 @@ export function Chat() {
     ]);
   };
 
+  const changeModel = (model: Model) => {
+    setModel(model);
+    ollamaClient.changeModel(model);
+  };
+
   const onSubmit = async (event: FormEvent) => {
     event.preventDefault();
 
     setIsLoading(true);
 
     addToConversation(prompt, false);
+    scrollToContent();
 
     const response = ollamaClient.chat(prompt);
 
@@ -40,21 +59,57 @@ export function Chat() {
 
     const message = (await response).message;
     const isAgent = message.role === "assistant";
-
     addToConversation(message.content, isAgent);
 
+    scrollToContent();
     setIsLoading(false);
+    autoFocus();
+  };
+
+  const scrollToContent = () => {
+    setTimeout(() => {
+      if (chatsRef.current) {
+        // fixme: this is not enough
+        chatsRef.current.scrollTop = chatsRef.current.scrollHeight;
+      }
+    }, 100);
+  };
+
+  const autoFocus = () => {
+    setTimeout(() => {
+      inputRef.current?.focus();
+    }, 100);
   };
 
   return (
-    <main className="flex items-center justify-center pt-16 pb-4">
+    <main className="flex items-center justify-center">
       <div className="flex-1 flex flex-col items-center gap-16 min-h-0">
-        <header className="flex flex-col items-center gap-9">
-          <div className="w-[800px] max-w-[100vw] p-4">Chat with Ollama!</div>
-        </header>
-        <div className="max-w-[800px] w-full space-y-6 px-4">
-          <section className="rounded-3xl border border-gray-200 p-6 dark:border-gray-700 space-y-4">
+        <div className="max-w-[800px] w-full space-y-6 px-4 container">
+          <section className="rounded-3xl border border-gray-200 p-6 dark:border-gray-700 space-y-4 form">
             <form onSubmit={onSubmit}>
+              <label
+                htmlFor="models"
+                className="block mb-2 text-sm font-medium text-gray-900 dark:text-white"
+              >
+                Select a model
+              </label>
+              <select
+                disabled={isLoading}
+                id="models"
+                className="bg-gray-50 border border-gray-300 text-gray-900 text-sm rounded-lg focus:ring-blue-500 focus:border-blue-500 block w-full p-2.5 dark:bg-gray-700 dark:border-gray-600 dark:placeholder-gray-400 dark:text-white dark:focus:ring-blue-500 dark:focus:border-blue-500"
+                onChange={(ev) => changeModel(ev.target.value as Model)}
+              >
+                {MODEL_OPTIONS.map((option) => (
+                  <option
+                    key={option.value}
+                    value={option.value}
+                    selected={option.value === model}
+                  >
+                    {option.label}
+                  </option>
+                ))}
+              </select>
+              <br />
               <label
                 htmlFor="search"
                 className="mb-2 text-sm font-medium text-gray-900 sr-only dark:text-white"
@@ -80,6 +135,8 @@ export function Chat() {
                   </svg>
                 </div>
                 <input
+                  ref={inputRef}
+                  autoFocus={true}
                   disabled={isLoading}
                   autoComplete="off"
                   type="search"
@@ -100,7 +157,7 @@ export function Chat() {
               </div>
             </form>
           </section>
-          <section className="space-y-4">
+          <section className="space-y-4 chat" ref={chatsRef}>
             {conversation.map((conv, index) => (
               <ChatBubble
                 key={index}
@@ -111,7 +168,7 @@ export function Chat() {
               />
             ))}
             {isLoading && (
-              <div className="text-center">
+              <div className="text-center" style={{ clear: "both" }}>
                 <div role="status">
                   <svg
                     aria-hidden="true"
