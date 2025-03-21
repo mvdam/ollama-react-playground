@@ -1,12 +1,13 @@
 import { Ollama, type Message } from "ollama";
 
-export const createOllamaClient = (initialContext: string[] = []) => {
-  let model = Model.llama3;
+export const createOllamaClient = (config: ClientConfig) => {
+  const initialContext = config.initialContext ?? [];
   const client = new Ollama({ host: "http://127.0.0.1:11434" });
   const previousMessages: Message[] = initialContext.map((content) => ({
     role: "system",
     content,
   }));
+  let model = config.model ?? Model.llama3;
 
   const chat = async (message: string) => {
     const newMessage = {
@@ -32,7 +33,7 @@ export const createOllamaClient = (initialContext: string[] = []) => {
 
   const reset = () => {
     client.abort();
-    return createOllamaClient(initialContext);
+    return createOllamaClient(config);
   };
 
   const changeModel = (newModel: Model) => {
@@ -41,14 +42,24 @@ export const createOllamaClient = (initialContext: string[] = []) => {
 
   const getModel = () => model;
 
+  const getName = () => config.name ?? String(model);
+
   return {
     client,
     chat,
     getModel,
+    getName,
     changeModel,
     reset,
   };
 };
+
+export type Client = ReturnType<typeof createOllamaClient>;
+export type ClientConfig = Partial<{
+  initialContext: string[];
+  model: Model;
+  name: string;
+}>;
 
 export enum Model {
   llama3 = "llama3:latest",

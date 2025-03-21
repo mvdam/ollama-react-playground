@@ -1,13 +1,13 @@
+import ConversationPage from "~/conversation/conversation-page";
 import type { Route } from "./+types/home";
-import { Chat } from "../chat/chat";
 
 export function meta({}: Route.MetaArgs) {
   return [
-    { title: "Ollama Chat" },
-    { name: "description", content: "Chat with Ollama!" },
+    { title: "Conversation" },
+    { name: "description", content: "Let AIs talk to each other!" },
   ];
 }
 
 export default function Conversation() {
-  return <Chat />;
+  return <ConversationPage />;
 }

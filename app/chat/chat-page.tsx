@@ -1,26 +1,27 @@
-import { useMemo, useRef, useState, type FormEvent } from "react";
+import { useRef, useState, type FormEvent } from "react";
 import { createOllamaClient, Model, MODEL_OPTIONS } from "~/api/ollama";
 import { ChatBubble } from "~/components/chat-bubble/chat-bubble";
 import { getCurrentTimeFormatted } from "~/util/date";
 
-import "./chat.css";
-
-type Conversation = {
-  isAgent: boolean;
-  messages: string[];
-  time: string;
-}[];
+import "./chat-page.css";
+import type { Conversation } from "~/models/conversation";
 
 const INITIAL_CONTEXT = [
   "Your name is Alice",
-  "act extremely kind in your responses",
-  "include a very bad joke in every response",
+  //   "act extremely kind in your responses",
+  //   "include a very bad joke in every response",
   "Antwoord alleen in het Nederlands",
 ];
 
-const ollamaClient = createOllamaClient(INITIAL_CONTEXT);
+const ollamaClient = createOllamaClient({
+  initialContext: INITIAL_CONTEXT,
+});
 
-export function Chat() {
+// https://reactrouter.com/home
+// https://flowbite.com/docs/forms/select/
+// https://github.com/ollama/ollama/blob/main/docs/api.md
+
+const ChatPage = () => {
   const [prompt, setPrompt] = useState("");
   const [isLoading, setIsLoading] = useState(false);
   const [conversation, setConversation] = useState<Conversation>([]);
@@ -34,6 +35,7 @@ export function Chat() {
       ...current,
       {
         isAgent,
+        name: isAgent ? ollamaClient.getName() : "Me",
         messages: [message],
         time: getCurrentTimeFormatted(),
       },
@@ -195,4 +197,6 @@ export function Chat() {
       </div>
     </main>
   );
-}
+};
+
+export default ChatPage;
